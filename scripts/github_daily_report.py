@@ -170,9 +170,50 @@ def make_desc(r: dict) -> str:
 
 
 def enrich_all(repos: list[dict]) -> list[dict]:
+    """用 GitHub Models AI 生成中文描述，失败则降级到模板。"""
+    print(f"  AI-generating descriptions for {len(repos)} repos...")
     for r in repos:
-        r["desc_zh"] = make_desc(r)
+        r["desc_zh"] = _ai_desc(r)
+        time.sleep(1.5)   # 保持在 15 RPM 以内
     return repos
+
+
+def _ai_desc(r: dict) -> str:
+    """调用 GitHub Models (gpt-4o-mini) 生成中文一句话介绍。"""
+    prompt = (
+        "用一句话（20-40字）介绍这个GitHub项目是什么、能做什么。"
+        "要求：自然中文，无翻译腔，无引号，直接输出介绍句。\n\n"
+        f"项目名：{r['name']}\n"
+        f"官方描述：{r.get('description') or '无'}\n"
+        f"主要语言：{r.get('language') or '未知'}\n"
+        f"标签：{', '.join(r.get('topics', [])[:6]) or '无'}\n"
+        f"Stars：{r.get('total_stars', 0):,}"
+    )
+    data = json.dumps({
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 80,
+        "temperature": 0.2,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://models.inference.ai.azure.com/chat/completions",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=15)
+        result = json.loads(resp.read())
+        text = result["choices"][0]["message"]["content"].strip().strip('"\'「」')
+        print(f"    [ai] {r['name'].split('/')[-1]}: {text[:40]}...")
+        return text
+    except urllib.error.HTTPError as e:
+        print(f"    [ai] HTTP {e.code} for {r['name']}: {e.read().decode()[:80]}")
+    except Exception as e:
+        print(f"    [ai] {r['name']}: {e}")
+    return make_desc(r)   # 降级到模板
 
 
 # ── Feishu ───────────────────────────────────────────────────────────────────
