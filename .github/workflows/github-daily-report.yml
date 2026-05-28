@@ -29,6 +29,7 @@ jobs:
       - name: Run daily report
         env:
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/github_daily_report.py
 
       - name: Upload debug log on failure
