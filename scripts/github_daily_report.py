@@ -34,119 +34,142 @@ _TOOL_KW = [
 
 # ── 中文描述生成（纯本地，无外部依赖）────────────────────────────────────────
 
-# Topic 标签 → 中文领域词
 _TOPIC_ZH: dict[str, str] = {
     "machine-learning": "机器学习", "deep-learning": "深度学习",
-    "llm": "大语言模型", "ai": "AI", "nlp": "自然语言处理",
-    "computer-vision": "计算机视觉", "generative-ai": "生成式AI",
-    "react": "React", "vue": "Vue", "angular": "Angular",
-    "frontend": "前端", "web": "Web", "nextjs": "Next.js",
+    "llm": "大语言模型", "ai": "AI 工具", "nlp": "自然语言处理",
+    "computer-vision": "计算机视觉", "generative-ai": "生成式 AI",
+    "react": "React 生态", "vue": "Vue 生态", "angular": "Angular",
+    "frontend": "前端开发", "web": "Web 开发", "nextjs": "Next.js",
     "nodejs": "Node.js", "fastapi": "FastAPI", "django": "Django",
     "docker": "Docker", "kubernetes": "Kubernetes", "devops": "DevOps",
-    "cli": "命令行工具", "terminal": "终端", "shell": "Shell",
+    "cli": "命令行工具", "terminal": "终端工具", "shell": "Shell 脚本",
     "database": "数据库", "sql": "SQL", "postgresql": "PostgreSQL",
-    "security": "安全", "cryptography": "密码学",
-    "ios": "iOS", "android": "Android", "mobile": "移动端",
-    "rust": "Rust", "golang": "Go", "python": "Python",
-    "self-hosted": "可自托管", "open-source": "开源",
-    "education": "编程教育", "tutorial": "教程",
-    "api": "API", "sdk": "SDK", "framework": "框架",
+    "security": "安全工具", "cryptography": "密码学",
+    "ios": "iOS 开发", "android": "Android 开发", "mobile": "移动端",
+    "self-hosted": "可自托管", "privacy": "隐私保护",
+    "education": "编程教育", "tutorial": "教程资源",
+    "awesome-list": "精选资源合集", "awesome": "精选合集",
+    "api": "API 服务", "sdk": "SDK", "framework": "开发框架",
     "automation": "自动化", "workflow": "工作流",
-    "game": "游戏", "graphics": "图形", "simulation": "仿真",
+    "game": "游戏开发", "graphics": "图形处理",
     "data-science": "数据科学", "visualization": "数据可视化",
     "chatbot": "聊天机器人", "agent": "AI Agent",
-    "productivity": "效率工具", "note-taking": "笔记",
+    "productivity": "效率工具", "note-taking": "笔记工具",
+    "monitoring": "监控工具", "observability": "可观测性",
+    "testing": "测试工具", "benchmark": "性能基准",
 }
 
-# 描述关键词 → 中文功能摘要
+# (正则, 中文描述) — 按优先级排列，先命中先用
 _DESC_PATTERNS: list[tuple[str, str]] = [
-    (r"alternative to ([^,.]+)",        r"替代 \1 的开源方案"),
-    (r"open.?source (?:version|alternative) (?:of|to) ([^,.]+)", r"\1 的开源替代"),
-    (r"self.?host",                      "可自托管部署"),
-    (r"command.?line|CLI tool",          "命令行工具"),
-    (r"machine learning|deep learning",  "机器学习框架"),
-    (r"large language model|LLM",        "大语言模型相关"),
-    (r"generate[sd]? (?:video|image|audio)", "AI 内容生成"),
-    (r"text.to.speech|TTS",              "文字转语音"),
-    (r"code (?:editor|assistant|agent)", "AI 编程辅助"),
-    (r"workflow automation",             "工作流自动化平台"),
-    (r"real.time",                       "实时"),
-    (r"privacy.first|privacy.focused",   "隐私优先"),
-    (r"(?:learn|teach|course|tutorial)", "学习/教程资源"),
-    (r"monitoring|observability",        "监控与可观测性"),
-    (r"starter|boilerplate|template",    "快速启动模板"),
+    # Awesome 合集
+    (r"curated\s+(?:list|collection)",          "精选资源合集"),
+    (r"awesome\s+list\s+of",                    "精选资源合集"),
+    # 平替/开源替代
+    (r"open.?source\s+(?:alternative|version)\s+(?:to|of)\s+([\w\s]+?)(?:[,.]|$)",
+                                                "开源替代方案"),
+    (r"alternative\s+to\s+([\w\s]+?)(?:[,.]|$)","开源替代方案"),
+    # 助手/Agent
+    (r"personal\s+AI\s+assistant",              "个人 AI 助手"),
+    (r"AI\s+(?:coding\s+)?assistant",           "AI 编程助手"),
+    (r"AI\s+agent",                             "AI Agent 框架"),
+    # 内容生成
+    (r"generate[sd]?\s+(?:\w+\s+)?video",       "AI 视频生成"),
+    (r"generate[sd]?\s+(?:\w+\s+)?image",       "AI 图像生成"),
+    (r"text.to.(?:speech|voice)|TTS",           "文字转语音"),
+    # 工具类
+    (r"workflow\s+automation",                  "工作流自动化平台"),
+    (r"command.?line|CLI\s+tool",               "命令行工具"),
+    (r"self.?host(?:ed|ing)?",                  "可自托管应用"),
+    (r"(?:web\s+)?(?:scraping|crawler)",        "网页爬虫工具"),
+    (r"(?:large\s+)?language\s+model|LLM",      "大语言模型工具"),
+    (r"machine\s+learning|deep\s+learning",     "机器学习工具"),
+    (r"(?:real.?time\s+)?(?:chat|messaging)",   "即时通讯工具"),
+    (r"monitoring|observability",               "监控 & 可观测性"),
+    (r"(?:code\s+)?(?:editor|IDE)",             "代码编辑器"),
+    (r"(?:boilerplate|starter|template)",       "项目启动模板"),
+    (r"(?:learn|course|curriculum|tutorial)",   "学习 & 教程"),
+    (r"getting\s+(?:things?|shit)\s+done|GTD",  "GTD 效率工具"),
+    (r"(?:task|todo|to-do)\s+(?:manager|app)",  "任务管理工具"),
+    (r"privacy.?(?:first|focused)",             "注重隐私的"),
+    (r"cross.?platform|any\s+(?:os|platform)",  "跨平台"),
 ]
 
-# 语言 → 中文标注
 _LANG_ZH: dict[str, str] = {
-    "TypeScript": "TS", "JavaScript": "JS", "Python": "Python",
+    "TypeScript": "TS", "JavaScript": "JS", "Python": "Py",
     "Rust": "Rust", "Go": "Go", "C++": "C++", "C": "C",
     "Java": "Java", "Kotlin": "Kotlin", "Swift": "Swift",
     "Ruby": "Ruby", "PHP": "PHP", "Shell": "Shell", "HTML": "HTML",
 }
 
 
-def _extract_pattern(desc: str) -> str:
-    for pattern, replacement in _DESC_PATTERNS:
-        m = re.search(pattern, desc, re.IGNORECASE)
-        if m:
-            try:
-                return re.sub(pattern, replacement, m.group(0), flags=re.IGNORECASE)
-            except Exception:
-                return replacement
+def _desc_hit(desc: str) -> list[str]:
+    hits = []
+    for pattern, zh in _DESC_PATTERNS:
+        if re.search(pattern, desc, re.IGNORECASE):
+            hits.append(zh)
+            if len(hits) >= 2:
+                break
+    return hits
+
+
+def _name_hint(name: str) -> str:
+    """从仓库名推断类型。"""
+    repo = name.split("/")[-1].lower()
+    if re.search(r"^awesome-", repo):
+        lang = repo.replace("awesome-", "").replace("-", "/").title()
+        return f"{lang} 精选资源合集"
+    if re.search(r"-(cli|tool|kit|lib|sdk|api)$", repo):
+        kind = {"cli": "命令行工具", "tool": "工具", "kit": "工具包",
+                "lib": "库", "sdk": "SDK", "api": "API 库"}
+        suffix = re.search(r"-(cli|tool|kit|lib|sdk|api)$", repo).group(1)
+        return kind.get(suffix, "开发工具")
     return ""
 
 
 def make_desc(r: dict) -> str:
-    """用仓库元数据直接生成中文描述，无需外部服务。"""
-    raw_desc  = r.get("description", "").strip()
-    topics    = r.get("topics", [])
-    lang      = r.get("language", "")
+    raw   = r.get("description", "").strip()
+    topics = r.get("topics", [])
+    lang  = r.get("language", "")
 
-    # 原描述已是中文 → 直接用
-    if raw_desc and sum(1 for c in raw_desc if "一" <= c <= "鿿") > 3:
-        return raw_desc
+    # 已是中文 → 直接用
+    if raw and sum(1 for c in raw if "一" <= c <= "鿿") > 3:
+        return raw
 
     parts: list[str] = []
 
-    # 1. 从描述里提取关键功能模式
-    if raw_desc:
-        pattern_hit = _extract_pattern(raw_desc)
-        if pattern_hit:
-            parts.append(pattern_hit)
+    # 1. 描述模式命中
+    parts.extend(_desc_hit(raw))
 
-    # 2. Topics → 领域词
-    topic_hits = [_TOPIC_ZH[t] for t in topics if t in _TOPIC_ZH][:3]
-    if topic_hits:
-        parts.append("·".join(topic_hits))
+    # 2. Topics 词典（模式已命中 2 条则跳过）
+    if len(parts) < 2:
+        topic_words = [_TOPIC_ZH[t] for t in topics if t in _TOPIC_ZH]
+        for tw in topic_words:
+            if tw not in "".join(parts):
+                parts.append(tw)
+            if len(parts) >= 2:
+                break
 
-    # 3. 实在没信息 → 保留英文原描述（总比空着强）
+    # 3. 仓库名推断
+    if len(parts) == 0:
+        hint = _name_hint(r["name"])
+        if hint:
+            parts.append(hint)
+
+    # 4. 兜底保留英文
     if not parts:
-        return raw_desc or "暂无描述"
+        return raw or "暂无描述"
 
-    # 去重：topics 里和 pattern 里说的同一件事不重复
-    if len(parts) > 1:
-        seen_words: set[str] = set(parts[0].split("·"))
-        deduped = [parts[0]]
-        for p in parts[1:]:
-            words = set(p.split("·"))
-            if not words & seen_words:   # 没有重叠词才加入
-                deduped.append(p)
-                seen_words |= words
-        parts = deduped
+    result = "，".join(dict.fromkeys(parts))   # 保序去重
 
-    result = "，".join(parts)
-
-    # 加语言标注
+    # 语言标注（内容够丰富才加）
     lang_short = _LANG_ZH.get(lang, "")
-    if lang_short and lang_short not in result:
+    if lang_short and len(result) >= 6 and lang_short not in result:
         result = f"[{lang_short}] {result}"
 
     return result
 
 
 def enrich_all(repos: list[dict]) -> list[dict]:
-    """为每个仓库生成中文描述，无外部调用。"""
     for r in repos:
         r["desc_zh"] = make_desc(r)
     return repos
