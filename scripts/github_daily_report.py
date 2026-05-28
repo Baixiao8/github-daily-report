@@ -34,37 +34,114 @@ _TOOL_KW = [
 
 # ── 翻译 ─────────────────────────────────────────────────────────────────────
 
+# 保护不该被翻译的技术词汇（翻译前替换为占位符，翻译后还原）
+_TECH_TERMS = [
+    (r"\brepo(sitory)?\b", "XREPOX"),
+    (r"\bfork\b",          "XFORKX"),
+    (r"\bpull request\b",  "XPRX"),
+    (r"\bcommit\b",        "XCOMMITX"),
+    (r"\bworkflow\b",      "XWORKFLOWX"),
+    (r"\bpipeline\b",      "XPIPELINEX"),
+    (r"\bDocker\b",        "XDOCKERX"),
+    (r"\bKubernetes\b",    "XKUBERNETESX"),
+    (r"\bLLM\b",           "XLLMX"),
+    (r"\bAI\b",            "XAIX"),
+    (r"\bAPI\b",           "XAPIX"),
+    (r"\bCLI\b",           "XCLIX"),
+    (r"\bSDK\b",           "XSDKX"),
+    (r"\bGPU\b",           "XGPUX"),
+]
+
+def _protect(text: str) -> tuple[str, dict]:
+    mapping = {}
+    for pattern, placeholder in _TECH_TERMS:
+        found = re.findall(pattern, text, re.IGNORECASE)
+        if found:
+            original = re.search(pattern, text, re.IGNORECASE).group(0)
+            mapping[placeholder] = original
+            text = re.sub(pattern, placeholder, text, flags=re.IGNORECASE)
+    return text, mapping
+
+def _restore(text: str, mapping: dict) -> str:
+    for placeholder, original in mapping.items():
+        text = text.replace(placeholder, original)
+    return text
+
 def translate(text: str) -> str:
-    """把英文描述翻译成中文，失败则保留原文。"""
+    """把英文描述翻译成中文，保护技术词，失败则保留原文。"""
     if not text or len(text) < 4:
         return text or "暂无描述"
-    # 已经是中文则跳过
     if sum(1 for c in text if "一" <= c <= "鿿") > 4:
-        return text
+        return text  # 已是中文
+
+    protected, mapping = _protect(text)
     url = (
         "https://api.mymemory.translated.net/get"
-        f"?q={urllib.parse.quote(text[:450])}&langpair=en|zh-CN"
+        f"?q={urllib.parse.quote(protected[:450])}&langpair=en|zh-CN"
     )
     req = urllib.request.Request(url, headers={"User-Agent": "github-daily-report/3.0"})
-    try:
-        r = urllib.request.urlopen(req, timeout=8)
-        data = json.loads(r.read())
-        result = data.get("responseData", {}).get("translatedText", "")
-        # MyMemory 失败时会返回全大写或原文
-        if result and result != result.upper() and result.upper() != text.upper():
-            return result
-    except Exception as e:
-        print(f"  [translate] {e}")
+
+    for attempt in range(2):
+        try:
+            r = urllib.request.urlopen(req, timeout=10)
+            data = json.loads(r.read())
+            result = data.get("responseData", {}).get("translatedText", "")
+            quota_ok = data.get("quotaFinished", False) is False
+            if not quota_ok:
+                print("  [translate] quota finished, skipping rest")
+                return text
+            if result and result != result.upper() and result.upper() != text.upper():
+                return _restore(result, mapping)
+        except Exception as e:
+            print(f"  [translate] attempt {attempt+1} error: {e}")
+            if attempt == 0:
+                time.sleep(3)
     return text
 
 
+def fetch_readme_summary(full_name: str) -> str:
+    """抓 README 首段有效内容，作为描述补充。"""
+    url = f"https://api.github.com/repos/{full_name}/readme"
+    req = urllib.request.Request(
+        url, headers={**_GH_API, "Accept": "application/vnd.github.raw"}
+    )
+    try:
+        r = urllib.request.urlopen(req, timeout=10)
+        content = r.read().decode("utf-8", errors="replace")
+        for line in content.split("\n"):
+            line = line.strip()
+            if not line or line.startswith(("#", "!", "<", ">", "---", "```", "<!--")):
+                continue
+            # 跳过纯徽章行（[![...](...)）
+            if re.match(r"^\[?!\[", line):
+                continue
+            # 清理 Markdown 标记
+            line = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", line)
+            line = re.sub(r"[*_`~]+", "", line)
+            line = re.sub(r"\s+", " ", line).strip()
+            if len(line) > 25:
+                return line[:220]
+    except Exception as e:
+        print(f"  [readme] {full_name}: {e}")
+    return ""
+
+
 def translate_all(repos: list[dict]) -> list[dict]:
-    """批量翻译，每条间隔 0.3s 避免限速。"""
-    print(f"  Translating {len(repos)} descriptions...")
+    """批量翻译，间隔 1.2s 避免触发限速。描述过短时先抓 README 补充。"""
+    print(f"  Enriching & translating {len(repos)} repos...")
     for r in repos:
-        raw = r.get("description", "")
+        raw = r.get("description", "").strip()
+
+        # 描述太短或太模糊 → 先抓 README 第一段
+        if len(raw) < 30:
+            readme = fetch_readme_summary(r["name"])
+            if readme:
+                raw = readme
+                print(f"    [readme] {r['name']}: got {len(raw)} chars")
+            time.sleep(0.5)
+
         r["desc_zh"] = translate(raw)
-        time.sleep(0.3)
+        time.sleep(1.2)
     return repos
 
 
