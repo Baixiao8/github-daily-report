@@ -32,116 +32,123 @@ _TOOL_KW = [
 ]
 
 
-# ── 翻译 ─────────────────────────────────────────────────────────────────────
+# ── 中文描述生成（纯本地，无外部依赖）────────────────────────────────────────
 
-# 保护不该被翻译的技术词汇（翻译前替换为占位符，翻译后还原）
-_TECH_TERMS = [
-    (r"\brepo(sitory)?\b", "XREPOX"),
-    (r"\bfork\b",          "XFORKX"),
-    (r"\bpull request\b",  "XPRX"),
-    (r"\bcommit\b",        "XCOMMITX"),
-    (r"\bworkflow\b",      "XWORKFLOWX"),
-    (r"\bpipeline\b",      "XPIPELINEX"),
-    (r"\bDocker\b",        "XDOCKERX"),
-    (r"\bKubernetes\b",    "XKUBERNETESX"),
-    (r"\bLLM\b",           "XLLMX"),
-    (r"\bAI\b",            "XAIX"),
-    (r"\bAPI\b",           "XAPIX"),
-    (r"\bCLI\b",           "XCLIX"),
-    (r"\bSDK\b",           "XSDKX"),
-    (r"\bGPU\b",           "XGPUX"),
+# Topic 标签 → 中文领域词
+_TOPIC_ZH: dict[str, str] = {
+    "machine-learning": "机器学习", "deep-learning": "深度学习",
+    "llm": "大语言模型", "ai": "AI", "nlp": "自然语言处理",
+    "computer-vision": "计算机视觉", "generative-ai": "生成式AI",
+    "react": "React", "vue": "Vue", "angular": "Angular",
+    "frontend": "前端", "web": "Web", "nextjs": "Next.js",
+    "nodejs": "Node.js", "fastapi": "FastAPI", "django": "Django",
+    "docker": "Docker", "kubernetes": "Kubernetes", "devops": "DevOps",
+    "cli": "命令行工具", "terminal": "终端", "shell": "Shell",
+    "database": "数据库", "sql": "SQL", "postgresql": "PostgreSQL",
+    "security": "安全", "cryptography": "密码学",
+    "ios": "iOS", "android": "Android", "mobile": "移动端",
+    "rust": "Rust", "golang": "Go", "python": "Python",
+    "self-hosted": "可自托管", "open-source": "开源",
+    "education": "编程教育", "tutorial": "教程",
+    "api": "API", "sdk": "SDK", "framework": "框架",
+    "automation": "自动化", "workflow": "工作流",
+    "game": "游戏", "graphics": "图形", "simulation": "仿真",
+    "data-science": "数据科学", "visualization": "数据可视化",
+    "chatbot": "聊天机器人", "agent": "AI Agent",
+    "productivity": "效率工具", "note-taking": "笔记",
+}
+
+# 描述关键词 → 中文功能摘要
+_DESC_PATTERNS: list[tuple[str, str]] = [
+    (r"alternative to ([^,.]+)",        r"替代 \1 的开源方案"),
+    (r"open.?source (?:version|alternative) (?:of|to) ([^,.]+)", r"\1 的开源替代"),
+    (r"self.?host",                      "可自托管部署"),
+    (r"command.?line|CLI tool",          "命令行工具"),
+    (r"machine learning|deep learning",  "机器学习框架"),
+    (r"large language model|LLM",        "大语言模型相关"),
+    (r"generate[sd]? (?:video|image|audio)", "AI 内容生成"),
+    (r"text.to.speech|TTS",              "文字转语音"),
+    (r"code (?:editor|assistant|agent)", "AI 编程辅助"),
+    (r"workflow automation",             "工作流自动化平台"),
+    (r"real.time",                       "实时"),
+    (r"privacy.first|privacy.focused",   "隐私优先"),
+    (r"(?:learn|teach|course|tutorial)", "学习/教程资源"),
+    (r"monitoring|observability",        "监控与可观测性"),
+    (r"starter|boilerplate|template",    "快速启动模板"),
 ]
 
-def _protect(text: str) -> tuple[str, dict]:
-    mapping = {}
-    for pattern, placeholder in _TECH_TERMS:
-        found = re.findall(pattern, text, re.IGNORECASE)
-        if found:
-            original = re.search(pattern, text, re.IGNORECASE).group(0)
-            mapping[placeholder] = original
-            text = re.sub(pattern, placeholder, text, flags=re.IGNORECASE)
-    return text, mapping
-
-def _restore(text: str, mapping: dict) -> str:
-    for placeholder, original in mapping.items():
-        text = text.replace(placeholder, original)
-    return text
-
-def translate(text: str) -> str:
-    """把英文描述翻译成中文，保护技术词，失败则保留原文。"""
-    if not text or len(text) < 4:
-        return text or "暂无描述"
-    if sum(1 for c in text if "一" <= c <= "鿿") > 4:
-        return text  # 已是中文
-
-    protected, mapping = _protect(text)
-    url = (
-        "https://api.mymemory.translated.net/get"
-        f"?q={urllib.parse.quote(protected[:450])}&langpair=en|zh-CN"
-    )
-    req = urllib.request.Request(url, headers={"User-Agent": "github-daily-report/3.0"})
-
-    for attempt in range(2):
-        try:
-            r = urllib.request.urlopen(req, timeout=10)
-            data = json.loads(r.read())
-            result = data.get("responseData", {}).get("translatedText", "")
-            quota_ok = data.get("quotaFinished", False) is False
-            if not quota_ok:
-                print("  [translate] quota finished, skipping rest")
-                return text
-            if result and result != result.upper() and result.upper() != text.upper():
-                return _restore(result, mapping)
-        except Exception as e:
-            print(f"  [translate] attempt {attempt+1} error: {e}")
-            if attempt == 0:
-                time.sleep(3)
-    return text
+# 语言 → 中文标注
+_LANG_ZH: dict[str, str] = {
+    "TypeScript": "TS", "JavaScript": "JS", "Python": "Python",
+    "Rust": "Rust", "Go": "Go", "C++": "C++", "C": "C",
+    "Java": "Java", "Kotlin": "Kotlin", "Swift": "Swift",
+    "Ruby": "Ruby", "PHP": "PHP", "Shell": "Shell", "HTML": "HTML",
+}
 
 
-def fetch_readme_summary(full_name: str) -> str:
-    """抓 README 首段有效内容，作为描述补充。"""
-    url = f"https://api.github.com/repos/{full_name}/readme"
-    req = urllib.request.Request(
-        url, headers={**_GH_API, "Accept": "application/vnd.github.raw"}
-    )
-    try:
-        r = urllib.request.urlopen(req, timeout=10)
-        content = r.read().decode("utf-8", errors="replace")
-        for line in content.split("\n"):
-            line = line.strip()
-            if not line or line.startswith(("#", "!", "<", ">", "---", "```", "<!--")):
-                continue
-            # 跳过纯徽章行（[![...](...)）
-            if re.match(r"^\[?!\[", line):
-                continue
-            # 清理 Markdown 标记
-            line = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", line)
-            line = re.sub(r"[*_`~]+", "", line)
-            line = re.sub(r"\s+", " ", line).strip()
-            if len(line) > 25:
-                return line[:220]
-    except Exception as e:
-        print(f"  [readme] {full_name}: {e}")
+def _extract_pattern(desc: str) -> str:
+    for pattern, replacement in _DESC_PATTERNS:
+        m = re.search(pattern, desc, re.IGNORECASE)
+        if m:
+            try:
+                return re.sub(pattern, replacement, m.group(0), flags=re.IGNORECASE)
+            except Exception:
+                return replacement
     return ""
 
 
-def translate_all(repos: list[dict]) -> list[dict]:
-    """批量翻译，间隔 1.2s 避免触发限速。描述过短时先抓 README 补充。"""
-    print(f"  Enriching & translating {len(repos)} repos...")
+def make_desc(r: dict) -> str:
+    """用仓库元数据直接生成中文描述，无需外部服务。"""
+    raw_desc  = r.get("description", "").strip()
+    topics    = r.get("topics", [])
+    lang      = r.get("language", "")
+
+    # 原描述已是中文 → 直接用
+    if raw_desc and sum(1 for c in raw_desc if "一" <= c <= "鿿") > 3:
+        return raw_desc
+
+    parts: list[str] = []
+
+    # 1. 从描述里提取关键功能模式
+    if raw_desc:
+        pattern_hit = _extract_pattern(raw_desc)
+        if pattern_hit:
+            parts.append(pattern_hit)
+
+    # 2. Topics → 领域词
+    topic_hits = [_TOPIC_ZH[t] for t in topics if t in _TOPIC_ZH][:3]
+    if topic_hits:
+        parts.append("·".join(topic_hits))
+
+    # 3. 实在没信息 → 保留英文原描述（总比空着强）
+    if not parts:
+        return raw_desc or "暂无描述"
+
+    # 去重：topics 里和 pattern 里说的同一件事不重复
+    if len(parts) > 1:
+        seen_words: set[str] = set(parts[0].split("·"))
+        deduped = [parts[0]]
+        for p in parts[1:]:
+            words = set(p.split("·"))
+            if not words & seen_words:   # 没有重叠词才加入
+                deduped.append(p)
+                seen_words |= words
+        parts = deduped
+
+    result = "，".join(parts)
+
+    # 加语言标注
+    lang_short = _LANG_ZH.get(lang, "")
+    if lang_short and lang_short not in result:
+        result = f"[{lang_short}] {result}"
+
+    return result
+
+
+def enrich_all(repos: list[dict]) -> list[dict]:
+    """为每个仓库生成中文描述，无外部调用。"""
     for r in repos:
-        raw = r.get("description", "").strip()
-
-        # 描述太短或太模糊 → 先抓 README 第一段
-        if len(raw) < 30:
-            readme = fetch_readme_summary(r["name"])
-            if readme:
-                raw = readme
-                print(f"    [readme] {r['name']}: got {len(raw)} chars")
-            time.sleep(0.5)
-
-        r["desc_zh"] = translate(raw)
-        time.sleep(1.2)
+        r["desc_zh"] = make_desc(r)
     return repos
 
 
@@ -334,7 +341,7 @@ def main():
     # ── 板块 1: 今日 Top 5 ───────────────────────────────────────────────────
     top5 = daily[:5]
     seen = {r["name"] for r in top5}
-    translate_all(top5)
+    enrich_all(top5)
     s1 = "\n\n".join(fmt(r) for r in top5)
 
     # ── 板块 2: 本周新生 Top 4（高日均增速）────────────────────────────────────
@@ -350,7 +357,7 @@ def main():
     new_candidates.sort(key=velocity, reverse=True)
     new4 = new_candidates[:4]
     seen |= {r["name"] for r in new4}
-    translate_all(new4)
+    enrich_all(new4)
     s2 = "\n\n".join(fmt(r) for r in new4)
 
     # ── 板块 3: 工具类（CLI/自托管/平替）────────────────────────────────────────
@@ -369,7 +376,7 @@ def main():
         extra = [r for r in weekly if r["name"] not in seen
                  and r["name"] not in {t["name"] for t in tools3}]
         tools3 += extra[:3 - len(tools3)]
-    translate_all(tools3)
+    enrich_all(tools3)
     s3 = "\n\n".join(fmt(r) for r in tools3)
 
     # ── 推送三张卡片 ─────────────────────────────────────────────────────────
