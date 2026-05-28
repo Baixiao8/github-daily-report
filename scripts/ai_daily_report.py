@@ -223,6 +223,64 @@ def ai_organize(items: list[dict]) -> dict | None:
         return None
 
 
+# ── 知识卡片（每日深度概念解读）─────────────────────────────────────────────────
+
+def ai_knowledge_card(items: list[dict]) -> dict | None:
+    listing = "\n".join(
+        f"[{i+1}] [{x['source']}] {x['title']}"
+        for i, x in enumerate(items[:50])
+    )
+
+    prompt = f"""你是 AI 领域科普作者。从以下今日新闻中，挑选 1 个最值得深入了解的技术概念或事件，写一张「知识卡片」。
+
+要求：
+- 挑有学习价值的概念（优先技术原理、新方法、新范式，而非纯商业新闻）
+- 用自然中文，无翻译腔，面向有一定技术背景的读者
+- 只返回 JSON，不要任何其他文字
+
+格式：
+{{"concept":"概念名称","what":"是什么（2-3句，说清楚定义和背景）","why":"为什么重要（1-2句）","analogy":"一个帮助理解的类比（1-2句）","takeaway":"一句话记住它"}}
+
+今日新闻列表：
+{listing}"""
+
+    data = json.dumps({
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 600,
+        "temperature": 0.3,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://models.inference.ai.azure.com/chat/completions",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=40)
+        body = json.loads(resp.read())
+        raw  = body["choices"][0]["message"]["content"].strip()
+        raw  = re.sub(r"^```json\s*", "", raw)
+        raw  = re.sub(r"\s*```$",     "", raw)
+        return json.loads(raw)
+    except Exception as e:
+        print(f"  [ai] knowledge_card: {e}")
+        return None
+
+
+def fmt_knowledge(card: dict) -> str:
+    return (
+        f"**{card['concept']}**\n\n"
+        f"{card['what']}\n\n"
+        f"**💡 为什么重要**\n{card['why']}\n\n"
+        f"**🎯 一个类比**\n{card['analogy']}\n\n"
+        f"**📌 一句话记住它**\n{card['takeaway']}"
+    )
+
+
 # ── Feishu ────────────────────────────────────────────────────────────────────
 
 def _post(payload: dict) -> tuple[bool, str]:
@@ -315,8 +373,21 @@ def main():
         if i < len(cards):
             time.sleep(2)
 
-    send_text(f"✅ AI 日报 {success}/3 个板块推送完成（GitHub Actions）")
-    print(f"Done: {success}/3")
+    # 第 4 张：知识卡片
+    time.sleep(2)
+    kcard = ai_knowledge_card(all_items)
+    if kcard:
+        content = fmt_knowledge(kcard) + "\n\n_via GitHub Actions_"
+        ok = send_card(f"🧠 今日知识卡片 · {TODAY}", "turquoise", content)
+        if ok:
+            success += 1
+        else:
+            send_text("⚠️ AI 日报报错: 知识卡片推送失败（GitHub Actions）")
+    else:
+        send_text("⚠️ AI 日报: 知识卡片生成失败，跳过（GitHub Actions）")
+
+    send_text(f"✅ AI 日报 {success}/4 个板块推送完成（GitHub Actions）")
+    print(f"Done: {success}/4")
 
 
 if __name__ == "__main__":
