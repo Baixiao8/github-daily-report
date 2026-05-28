@@ -17,6 +17,10 @@ TODAY        = date.today().strftime("%Y-%m-%d")
 CST          = timezone(timedelta(hours=8))
 NOW_STR      = datetime.now(CST).strftime("%H:%M")
 
+# 启动诊断（Actions log 可见）
+print(f"[boot] date={TODAY} now_cst={NOW_STR}")
+print(f"[boot] GITHUB_TOKEN set={bool(GITHUB_TOKEN)} len={len(GITHUB_TOKEN)}")
+
 _GH_API = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
     "Accept": "application/vnd.github+json",
