@@ -225,18 +225,31 @@ def ai_organize(items: list[dict]) -> dict | None:
 
 # ── 知识卡片（每日深度概念解读）─────────────────────────────────────────────────
 
-def ai_knowledge_card(items: list[dict]) -> dict | None:
+def ai_knowledge_card(items: list[dict], sections: dict) -> dict | None:
     listing = "\n".join(
         f"[{i+1}] [{x['source']}] {x['title']}"
         for i, x in enumerate(items[:50])
+    )
+
+    already_covered = "\n".join(
+        f"- {x['title']}"
+        for x in (
+            sections.get("model", []) +
+            sections.get("research", []) +
+            sections.get("industry", [])
+        )
     )
 
     prompt = f"""你是 AI 领域科普作者。从以下今日新闻中，挑选 1 个最值得深入了解的技术概念或事件，写一张「知识卡片」。
 
 要求：
 - 挑有学习价值的概念（优先技术原理、新方法、新范式，而非纯商业新闻）
+- 不能选已在日报中出现的内容（见下方「已覆盖」列表）
 - 用自然中文，无翻译腔，面向有一定技术背景的读者
 - 只返回 JSON，不要任何其他文字
+
+已覆盖（不要重复）：
+{already_covered}
 
 格式：
 {{"concept":"概念名称","what":"是什么（2-3句，说清楚定义和背景）","why":"为什么重要（1-2句）","analogy":"一个帮助理解的类比（1-2句）","takeaway":"一句话记住它"}}
@@ -375,7 +388,7 @@ def main():
 
     # 第 4 张：知识卡片
     time.sleep(2)
-    kcard = ai_knowledge_card(all_items)
+    kcard = ai_knowledge_card(all_items, sections)
     if kcard:
         content = fmt_knowledge(kcard) + "\n\n_via GitHub Actions_"
         ok = send_card(f"🧠 今日知识卡片 · {TODAY}", "turquoise", content)
