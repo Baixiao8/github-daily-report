@@ -272,7 +272,7 @@ def fmt(item: dict) -> str:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    send_text(f"🤖 AI 日报开始拽取·{NOW_STR}")
+    send_text(f"🤖 AI 日报开始拽取·{NOW_STR}（via GitHub Actions）")
 
     all_items = []
     for name, url in RSS_FEEDS:
@@ -286,12 +286,12 @@ def main():
     print(f"After dedup: {len(all_items)}")
 
     if not all_items:
-        send_text("⚠️ AI 日报报错: 所有数据源均获取失败")
+        send_text("⚠️ AI 日报报错: 所有数据源均获取失败（GitHub Actions）")
         return
 
     sections = ai_organize(all_items)
     if not sections:
-        send_text("⚠️ AI 日报报错: AI 内容整理失败")
+        send_text("⚠️ AI 日报报错: AI 内容整理失败（GitHub Actions）")
         return
 
     cards = [
@@ -303,18 +303,19 @@ def main():
     success = 0
     for i, (title, tpl, items) in enumerate(cards, 1):
         if not items:
-            send_text(f"⚠️ AI 日报: 板块{i}「{title}」无内容，跳过")
+            send_text(f"⚠️ AI 日报: 板块{i}「{title}」无内容，跳过（GitHub Actions）")
             continue
         content = "\n\n".join(fmt(x) for x in items)
+        content += "\n\n_via GitHub Actions_"
         ok = send_card(title, tpl, content)
         if ok:
             success += 1
         else:
-            send_text(f"⚠️ AI 日报报错: 第 {i} 张卡片推送失败")
+            send_text(f"⚠️ AI 日报报错: 第 {i} 张卡片推送失败（GitHub Actions）")
         if i < len(cards):
             time.sleep(2)
 
-    send_text(f"✅ AI 日报 {success}/3 个板块推送完成")
+    send_text(f"✅ AI 日报 {success}/3 个板块推送完成（GitHub Actions）")
     print(f"Done: {success}/3")
 
 
