@@ -1,0 +1,41 @@
+name: AI Daily Feishu Report
+
+on:
+  schedule:
+    # 每天 18:00 北京时间 (10:00 UTC)
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (print content, skip Feishu push)"
+        type: boolean
+        default: false
+
+jobs:
+  report:
+    name: Fetch AI news & push to Feishu
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run AI daily report
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        run: python scripts/ai_daily_report.py
+
+      - name: Upload debug log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-report-failure-log
+          path: /tmp/*.json
+          retention-days: 3
