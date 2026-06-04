@@ -1,41 +1,54 @@
-name: AI Daily Feishu Report
+name: AI Daily Report
 
 on:
   schedule:
-    # 每天 18:00 北京时间 (10:00 UTC)
-    - cron: "0 10 * * *"
+    # 每天北京时间 09:00 = UTC 01:00
+    - cron: '0 1 * * *'
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Dry run (print content, skip Feishu push)"
-        type: boolean
-        default: false
+      reset:
+        description: '清空今日状态强制重推 (yes/no)'
+        required: false
+        default: 'no'
 
 jobs:
-  report:
-    name: Fetch AI news & push to Feishu
+  daily-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Set up Python 3.11
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
+          cache: 'pip'
 
-      - name: Run AI daily report
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Reset state
+        if: github.event.inputs.reset == 'yes'
+        run: python3 scripts/run.py --reset
+
+      - name: Check push state
+        run: python3 scripts/run.py --check
+
+      - name: Run daily report
         env:
-          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        run: python scripts/ai_daily_report.py
+          FEISHU_WEBHOOK:    ${{ secrets.FEISHU_WEBHOOK }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 scripts/run.py
 
-      - name: Upload debug log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-report-failure-log
-          path: /tmp/*.json
-          retention-days: 3
+      - name: Commit updated state
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          git diff --cached --quiet || git commit -m "chore: update daily report state $(date +%Y-%m-%d)"
+          git push
