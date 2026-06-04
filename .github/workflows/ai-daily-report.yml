@@ -41,8 +41,8 @@ jobs:
 
       - name: Run daily report
         env:
-          FEISHU_WEBHOOK:    ${{ secrets.FEISHU_WEBHOOK }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/run.py
 
       - name: Commit updated state

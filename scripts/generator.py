@@ -1,26 +1,36 @@
 """
-内容生成模块 — Claude API 把原始数据生成中文飞书卡片
+内容生成模块 — GitHub Models API (gpt-4o-mini) 生成中文飞书卡片
+免费，使用 Actions 自带的 GITHUB_TOKEN，无需额外注册。
 """
 import os, json
-import anthropic
+from openai import OpenAI
 
-CLIENT = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
-MODEL  = 'claude-haiku-4-5-20251001'
+CLIENT = OpenAI(
+    base_url='https://models.inference.ai.azure.com',
+    api_key=os.environ['GITHUB_TOKEN'],
+)
+MODEL = 'gpt-4o-mini'
 
 def _ask(prompt: str, max_tokens: int = 1400) -> str:
-    msg = CLIENT.messages.create(
+    resp = CLIENT.chat.completions.create(
         model=MODEL,
         max_tokens=max_tokens,
-        system="""你是 AI 资讯编辑，把原始数据整理成简洁的中文飞书卡片内容。
-
-格式规则：
-- 每条加粗项目/文章名，一句话说清核心价值，说人话不翻译腔
-- 说明为什么重要（1-2句），末尾 🔗 URL
-- 条目间空一行，每板块 4-5 条，宁缺毋滥
-- 不用弯引号，不用代码块，不加多余 emoji""",
-        messages=[{'role': 'user', 'content': prompt}],
+        messages=[
+            {
+                'role': 'system',
+                'content': (
+                    '你是 AI 资讯编辑，把原始数据整理成简洁的中文飞书卡片内容。\n\n'
+                    '格式规则：\n'
+                    '- 每条加粗项目/文章名，一句话说清核心价值，说人话不翻译腔\n'
+                    '- 说明为什么重要（1-2句），末尾 🔗 URL\n'
+                    '- 条目间空一行，每板块 4-5 条，宁缺毋滥\n'
+                    '- 不用弯引号，不用代码块，不加多余 emoji'
+                ),
+            },
+            {'role': 'user', 'content': prompt},
+        ],
     )
-    return msg.content[0].text.strip()
+    return resp.choices[0].message.content.strip()
 
 
 def gen_github(data: list) -> str:
