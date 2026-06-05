@@ -3,7 +3,7 @@ name: GitHub Daily Feishu Report
 on:
   schedule:
     # 每天 09:00 北京时间 (01:00 UTC)
-    - cron: "0 1 * * *"
+    - cron: "0 22 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
